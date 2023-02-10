@@ -16,7 +16,7 @@
 #### Jimmy
 
 - Synthetic Data Generation
-    - CTGAN 
+  - CTGAN 
 
 - Explainable AI
   - Shapley values 
