@@ -1,0 +1,26 @@
+- GNNs for DNA
+
+- Youtube playlist for Graph Neural Network
+    - Relatively new
+    - Math heavy
+    - Graph convolution
+        - Tabular data
+        - Embeddings
+    - Potential avenues
+      - Drug discovery
+    - Youtube tutorials
+    - University research paper instead of Google
+
+- CT GAN
+    - Dataset with continous variable data
+      - Different representation for categorical (one hot encoding)
+    - Mode specific
+    - Estimate multimodal gaussian distribution
+    - Input vectors are very sparse, we want it to be dense for network training
+        - We can use embeddings from auto encoder
+    - Start date and end date
+    - Another extension: Tabular synthesis time series data synthesis
+    - Infuse GNN and CT GAN, not sure if feasible
+    - What dataset will we use
+        - Simulated and actual
+    - Model compression
