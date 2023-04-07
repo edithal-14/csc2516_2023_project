@@ -116,7 +116,9 @@ class TVAE(BaseSynthesizer):
         batch_size=500,
         epochs=300,
         loss_factor=2,
-        cuda=True
+        cuda=True,
+        # train_data=None,
+        # discrete_columns=()
     ):
 
         self.embedding_dim = embedding_dim
@@ -136,6 +138,12 @@ class TVAE(BaseSynthesizer):
             device = 'cuda'
 
         self._device = torch.device(device)
+
+        # Useful to avoid transform for multiple fits
+        # self.transformer = DataTransformer()
+        # self.transformer.fit(train_data, discrete_columns)
+        # train_data = self.transformer.transform(train_data)
+        # self.dataset = torch.from_numpy(train_data.astype("float32")).to(self._device)
 
     @random_state
     def fit(self, train_data, discrete_columns=()):
@@ -204,9 +212,8 @@ class TVAE(BaseSynthesizer):
                             ed = st + span_info.dim
                             input = rec[:, st:ed]
                             target = real[:, st:ed]
-                            # NOTE: Implement cross entropy manually
-                            # loss += cross_entropy(input, torch.argmax(target, dim=-1), reduction='none').sum()
-                            loss += -(torch.log(torch.softmax(input, dim=1)) * target).sum()
+                            loss += cross_entropy(input, torch.argmax(target, dim=-1), reduction='none').sum()
+                            # loss += -(torch.log(torch.softmax(input, dim=1)) * target).sum()
                             st = ed
 
                 KLD = -0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp())
