@@ -433,7 +433,7 @@ class CTGANV2(BaseSynthesizer):
         self._ae_losses = np.zeros(ae_epochs)
         dataloader = DataLoader(train_data, batch_size=self._ae_batch_size)
 
-        for it in range(1):
+        for it in range(ae_epochs):
             it_loss = 0
             
             for batch in dataloader:
@@ -501,7 +501,7 @@ class CTGANV2(BaseSynthesizer):
         std = mean + 1
 
         steps_per_epoch = max(len(train_data) // self._batch_size, 1)
-        for i in range(1):
+        for i in range(epochs):
             for id_ in range(steps_per_epoch):
                 real = None
 
@@ -582,7 +582,7 @@ class CTGANV2(BaseSynthesizer):
                 if condvec is None:
                     cross_entropy = 0
                 else:
-                    fake_decode = self._autoencoder.decode(fake)
+                    fake_decode = self._autoencoder.decode(fakeact)
                     cross_entropy = self._cond_loss(fake_decode, c1, m1)
                 
                 # generator loss
