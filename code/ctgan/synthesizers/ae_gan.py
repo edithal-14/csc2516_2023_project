@@ -10,7 +10,9 @@ from ctgan.data_sampler import DataSampler
 from ctgan.data_transformer import DataTransformer
 from ctgan.synthesizers.base import BaseSynthesizer, random_state
 from ctgan.synthesizers.ctgan import Discriminator, Generator
-
+from ctgan.synthesizers.encoders.autoencoder import AutoEncoder
+from ctgan.synthesizers.encoders.entity_embeddings_ae import EntityEmbeddingEncoder
+from ctgan.synthesizers.encoders.vae import VariationalAutoEncoder
 
 def get_st_ed(target_col_index,output_info):
     
@@ -45,43 +47,6 @@ def get_st_ed(target_col_index,output_info):
     ed= st+output_info[tc][0] 
     
     return (st,ed)
-
-
-class AutoEncoder(nn.Module):
-    """AutoEncoder for AE-CTGAN Framework"""
-
-    def __init__(self, input_dim: int, hidden_dims: list) -> None:
-        super(AutoEncoder, self).__init__()
-        enc = []
-        dec = []
-        dim = input_dim
-
-        # encoder
-        for h_dim in hidden_dims:
-            enc.append(nn.Linear(dim, h_dim))
-            enc.append(nn.ReLU())
-            dim = h_dim
-
-        # decoder
-        for h_dim in reversed(hidden_dims[:-1]):
-            dec.append(nn.Linear(dim, h_dim))
-            dec.append(nn.ReLU())
-            dim = h_dim
-
-        dec.append(nn.Linear(dim, input_dim))
-        dec.append(nn.ReLU())
-
-        self.encoder = nn.Sequential(*enc)
-        self.decoder = nn.Sequential(*dec)
-    
-    def forward(self, x: torch.tensor, mode: str) -> torch.tensor:
-        if mode == "train" or mode == "encode":
-            x = self.encoder(x)
-        
-        if mode == "train" or mode == "decode":
-            x = self.decoder(x)
-        
-        return x
 
 
 class Classifier(nn.Module):
@@ -267,7 +232,7 @@ class CTGANV2(BaseSynthesizer):
                  ae_dim=(256, 128, 64), clf_dim=(256, 256, 256, 256), generator_lr=2e-4, generator_decay=1e-6, 
                  discriminator_lr=2e-4, discriminator_decay=1e-6, autoencoder_lr=1e-4, clf_lr=2e-4, 
                  clf_betas=(0.5, 0.9), clf_eps=1e-3, clf_decay=1e-5, batch_size=500, ae_batch_size=512, 
-                 discriminator_steps=1, log_frequency=True, verbose=False, epochs=300, ae_epochs=10, pac=10, cuda=True):
+                 discriminator_steps=1, log_frequency=True, verbose=False, epochs=300, ae_epochs=100, pac=10, cuda=True):
 
         assert batch_size % 2 == 0
 
@@ -446,9 +411,20 @@ class CTGANV2(BaseSynthesizer):
             self._transformer.output_info_list,
             self._log_frequency)
         
-        self._autoencoder = AutoEncoder(
-            input_dim=train_data.shape[1], 
-            hidden_dims=self._autoencoder_dim
+        # self._autoencoder = AutoEncoder(
+        #     input_dim=train_data.shape[1], 
+        #     hidden_dims=self._autoencoder_dim
+        # ).to(self._device)
+
+        # self._autoencoder = VariationalAutoEncoder(
+        #     input_dim=train_data.shape[1], 
+        #     hidden_dims=self._autoencoder_dim
+        # ).to(self._device)
+
+        self._autoencoder = EntityEmbeddingEncoder(
+            input_dim=train_data.shape[1],
+            hidden_dims=self._autoencoder_dim,
+            output_info=self._transformer.output_info_list
         ).to(self._device)
 
         # ae training setup
@@ -457,14 +433,17 @@ class CTGANV2(BaseSynthesizer):
         self._ae_losses = np.zeros(ae_epochs)
         dataloader = DataLoader(train_data, batch_size=self._ae_batch_size)
 
-        for it in range(ae_epochs):
+        for it in range(1):
             it_loss = 0
             
             for batch in dataloader:
                 # forward pass
                 batch = batch.to(self._device, dtype=torch.float32)
-                out = self._autoencoder(batch, mode="train")
+                out = self._autoencoder(batch)                
                 loss = ae_loss_fn(out, batch)
+                
+                if isinstance(self._autoencoder, VariationalAutoEncoder):
+                    loss += self._autoencoder.kld
 
                 # backprop
                 optimizerAE.zero_grad()
@@ -514,11 +493,15 @@ class CTGANV2(BaseSynthesizer):
             betas=(0.5, 0.9), weight_decay=self._discriminator_decay
         )
 
+        self._d_losses = np.zeros(epochs)
+        self._g_losses = np.zeros(epochs)
+        self._c_losses = np.zeros(epochs)
+
         mean = torch.zeros(self._batch_size, self._embedding_dim, device=self._device)
         std = mean + 1
 
         steps_per_epoch = max(len(train_data) // self._batch_size, 1)
-        for i in range(epochs):
+        for i in range(1):
             for id_ in range(steps_per_epoch):
                 real = None
 
@@ -549,7 +532,7 @@ class CTGANV2(BaseSynthesizer):
 
                     # real input for discriminator
                     real = torch.from_numpy(real.astype('float32')).to(self._device)
-                    real_enc = self._autoencoder(real, mode="encode")
+                    real_enc = self._autoencoder.encode(real)
 
                     if c1 is not None:
                         fake_cat = torch.cat([fakeact, c1], dim=1)
@@ -599,7 +582,7 @@ class CTGANV2(BaseSynthesizer):
                 if condvec is None:
                     cross_entropy = 0
                 else:
-                    fake_decode = self._autoencoder(fake, mode="decode")
+                    fake_decode = self._autoencoder.decode(fake)
                     cross_entropy = self._cond_loss(fake_decode, c1, m1)
                 
                 # generator loss
@@ -631,7 +614,7 @@ class CTGANV2(BaseSynthesizer):
                     # generator forward pass
                     fake = self._generator(fakez)
                     fakeact = self._apply_activate(fake)
-                    fake_dec = self._autoencoder(fakeact, mode='decode')
+                    fake_dec = self._autoencoder.decode(fakeact)
 
                     # clf forward pass on fake data
                     fake_pre, fake_label = classifier(fake_dec)
@@ -647,8 +630,75 @@ class CTGANV2(BaseSynthesizer):
                     loss_cf.backward()
                     optimizerC.step()
 
+            self._d_losses[i] = loss_d.item()
+            self._g_losses[i] = loss_g.item()
+            self._c_losses[i] = loss_cr.item() + loss_cf.item()
 
             if self._verbose:
-                print(f'Epoch {i+1}, Loss G: {loss_g.detach().cpu(): .4f},'  # noqa: T001
-                      f'Loss D: {loss_d.detach().cpu(): .4f}',
-                      flush=True)
+                msg = f'Epoch {i+1}, Loss G: {loss_g.detach().cpu(): .4f}, Loss D: {loss_d.detach().cpu(): .4f}'
+
+                if target_index is not None:
+                    msg += f'Loss C: {loss_cr.item() + loss_cf.item():.4f}'
+
+                print(msg, flush=True)
+
+    @random_state
+    def sample(self, n, condition_column=None, condition_value=None):
+        """Sample data similar to the training data.
+        Choosing a condition_column and condition_value will increase the probability of the
+        discrete condition_value happening in the condition_column.
+        Args:
+            n (int):
+                Number of rows to sample.
+            condition_column (string):
+                Name of a discrete column.
+            condition_value (string):
+                Name of the category in the condition_column which we wish to increase the
+                probability of happening.
+        Returns:
+            numpy.ndarray or pandas.DataFrame
+        """
+        if condition_column is not None and condition_value is not None:
+            condition_info = self._transformer.convert_column_name_value_to_id(
+                condition_column, condition_value)
+            global_condition_vec = self._data_sampler.generate_cond_from_condition_column_info(
+                condition_info, self._batch_size)
+        else:
+            global_condition_vec = None
+
+        steps = n // self._batch_size + 1
+        data = []
+
+        for i in range(steps):
+            mean = torch.zeros(self._batch_size, self._embedding_dim)
+            std = mean + 1
+            fakez = torch.normal(mean=mean, std=std).to(self._device)
+
+            if global_condition_vec is not None:
+                condvec = global_condition_vec.copy()
+            else:
+                condvec = self._data_sampler.sample_original_condvec(self._batch_size)
+
+            if condvec is None:
+                pass
+            else:
+                c1 = condvec
+                c1 = torch.from_numpy(c1).to(self._device)
+                fakez = torch.cat([fakez, c1], dim=1)
+
+            fake = self._generator(fakez)
+            fakeact = self._apply_activate(fake)
+            fake_dec = self._autoencoder.decode(fakeact)
+            data.append(fake_dec.detach().cpu().numpy())
+
+        data = np.concatenate(data, axis=0)
+        data = data[:n]
+
+        return self._transformer.inverse_transform(data)
+
+    def set_device(self, device):
+        """Set the `device` to be used ('GPU' or 'CPU)."""
+        self._device = device
+        if self._generator is not None:
+            self._generator.to(self._device)
+            
