@@ -242,7 +242,7 @@ class CTGANV2(BaseSynthesizer):
     def __init__(self, embedding_dim=128, generator_dim=(256, 256), discriminator_dim=(256, 256), 
         ae_dim=(256, 128, 64), clf_dim=(256, 256, 256, 256), generator_lr=2e-4, generator_decay=1e-6, 
         discriminator_lr=2e-4, discriminator_decay=1e-6, autoencoder_lr=1e-4, clf_lr=2e-4, 
-        clf_betas=(0.5, 0.9), clf_eps=1e-3, clf_decay=1e-5, batch_size=500, ae_batch_size=512, 
+        clf_betas=(0.5, 0.9), clf_eps=1e-3, clf_decay=1e-5, batch_size=512, ae_batch_size=512,
         discriminator_steps=1, log_frequency=True, verbose=False, epochs=300, ae_epochs=100, pac=10, cuda=True,
         ae_type: AutoEncoderType = AutoEncoderType.VANILLA,
     ):
