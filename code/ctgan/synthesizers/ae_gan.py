@@ -228,14 +228,15 @@ class CTGANV2(BaseSynthesizer):
             Defaults to ``True``.
     """
 
-    def __init__(self, embedding_dim=128, generator_dim=(256, 256), discriminator_dim=(256, 256), 
+    def __init__(self, ae_type='vanilla', embedding_dim=128, generator_dim=(256, 256), discriminator_dim=(256, 256),
                  ae_dim=(256, 128, 64), clf_dim=(256, 256, 256, 256), generator_lr=2e-4, generator_decay=1e-6, 
                  discriminator_lr=2e-4, discriminator_decay=1e-6, autoencoder_lr=1e-4, clf_lr=2e-4, 
-                 clf_betas=(0.5, 0.9), clf_eps=1e-3, clf_decay=1e-5, batch_size=500, ae_batch_size=512, 
-                 discriminator_steps=1, log_frequency=True, verbose=False, epochs=300, ae_epochs=100, pac=10, cuda=True):
+                 clf_betas=(0.5, 0.9), clf_eps=1e-3, clf_decay=1e-5, batch_size=512, ae_batch_size=512,
+                 discriminator_steps=1, log_frequency=True, verbose=False, epochs=100, ae_epochs=100,pac=8, cuda=True):
 
         assert batch_size % 2 == 0
 
+        self.ae_type=ae_type
         self._embedding_dim = embedding_dim
         self._generator_dim = generator_dim
         self._discriminator_dim = discriminator_dim
@@ -371,7 +372,7 @@ class CTGANV2(BaseSynthesizer):
             raise ValueError(f'Invalid columns found: {invalid_columns}')
 
     @random_state
-    def fit(self, train_data, discrete_columns=(), epochs=None, ae_epochs=None, target_index=None, dt=None):
+    def fit(self, train_data, discrete_columns=(), epochs=None, ae_epochs=None, target_index=None, dt=None, is_transformed=False):
         """Fit the CTGAN Synthesizer models to the training data.
         Args:
             train_data (numpy.ndarray or pandas.DataFrame):
@@ -404,28 +405,36 @@ class CTGANV2(BaseSynthesizer):
         else:
             self._transformer = DataTransformer()
             self._transformer.fit(train_data, discrete_columns)
-        train_data = self._transformer.transform(train_data)
+        if not is_transformed:
+            train_data = self._transformer.transform(train_data)
 
         self._data_sampler = DataSampler(
             train_data,
             self._transformer.output_info_list,
             self._log_frequency)
         
-        # self._autoencoder = AutoEncoder(
-        #     input_dim=train_data.shape[1], 
-        #     hidden_dims=self._autoencoder_dim
-        # ).to(self._device)
-
-        # self._autoencoder = VariationalAutoEncoder(
-        #     input_dim=train_data.shape[1], 
-        #     hidden_dims=self._autoencoder_dim
-        # ).to(self._device)
-
-        self._autoencoder = EntityEmbeddingEncoder(
-            input_dim=train_data.shape[1],
-            hidden_dims=self._autoencoder_dim,
-            output_info=self._transformer.output_info_list
-        ).to(self._device)
+        if self.ae_type == 'vanilla':
+            self._autoencoder = AutoEncoder(
+                input_dim=train_data.shape[1],
+                hidden_dims=self._autoencoder_dim
+            ).to(self._device)
+        elif self.ae_type == 'denoising':
+            self._autoencoder = AutoEncoder(
+                input_dim=train_data.shape[1],
+                hidden_dims=self._autoencoder_dim,
+                noise=True
+            ).to(self._device)
+        elif self.ae_type == 'vae':
+            self._autoencoder = VariationalAutoEncoder(
+                input_dim=train_data.shape[1],
+                hidden_dims=self._autoencoder_dim
+            ).to(self._device)
+        elif self.ae_type == 'ee':
+            self._autoencoder = EntityEmbeddingEncoder(
+                input_dim=train_data.shape[1],
+                hidden_dims=self._autoencoder_dim,
+                output_info=self._transformer.output_info_list
+            ).to(self._device)
 
         # ae training setup
         optimizerAE = torch.optim.Adam(self._autoencoder.parameters(), lr=self._autoencoder_lr)
@@ -638,7 +647,7 @@ class CTGANV2(BaseSynthesizer):
                 msg = f'Epoch {i+1}, Loss G: {loss_g.detach().cpu(): .4f}, Loss D: {loss_d.detach().cpu(): .4f}'
 
                 if target_index is not None:
-                    msg += f'Loss C: {loss_cr.item() + loss_cf.item():.4f}'
+                    msg += f' Loss C: {loss_cr.item() + loss_cf.item():.4f}'
 
                 print(msg, flush=True)
 
