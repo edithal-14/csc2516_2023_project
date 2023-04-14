@@ -151,7 +151,7 @@ def train_model(
             else:
                 print(f"Epoch: {epoch + 1}, Training Loss: {epoch_loss:.4f}, Valid Loss: {valid_loss:.4f}, Valid score: {valid_score:.4f}")
 
-    print(f"Best validation score: {best_valid_score}")
+    #print(f"Best validation score: {best_valid_score}")
     if use_best_validation:
         model.load_state_dict(best_model_weights)
     model.eval()

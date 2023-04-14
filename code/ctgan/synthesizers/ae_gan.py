@@ -5,6 +5,7 @@ import torch
 from packaging import version
 from torch import nn
 from torch.utils.data import DataLoader
+from tqdm.notebook import tqdm
 
 from ctgan.data_sampler import DataSampler
 from ctgan.data_transformer import DataTransformer
@@ -442,7 +443,7 @@ class CTGANV2(BaseSynthesizer):
         self._ae_losses = np.zeros(ae_epochs)
         dataloader = DataLoader(train_data, batch_size=self._ae_batch_size)
 
-        for it in range(ae_epochs):
+        for it in tqdm(range(ae_epochs), desc="AE Train", leave=False):
             it_loss = 0
             
             for batch in dataloader:
@@ -510,7 +511,7 @@ class CTGANV2(BaseSynthesizer):
         std = mean + 1
 
         steps_per_epoch = max(len(train_data) // self._batch_size, 1)
-        for i in range(epochs):
+        for i in tqdm(range(epochs), desc="GAN Train", leave=False):
             for id_ in range(steps_per_epoch):
                 real = None
 
