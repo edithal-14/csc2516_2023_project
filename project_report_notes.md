@@ -1,0 +1,55 @@
+### Result section
+
+- Datasets
+  - adult (classification)
+  - news (regression)
+  - credit (classification, big data)
+
+- Models
+  - CTGAN
+  - CTAB-GAN
+  - Vanilla AE-GAN,
+  - Denoising AE-GAN
+  - Entity embedding AE-GAN
+  - Variational AE-GAN
+
+- Performance metric
+  - ML efficacy
+    - Using MLP(100)
+      - Train on fake data, test on real data
+    - Difference between real and synthetic dataset
+      - Accuracy
+      - F1 score
+      - AUC-ROC
+  - Statistical similarity
+    - JSD
+    - WD
+    - Difference corelation
+
+- Paper outline
+    - 1st page (Sumant)
+        - Abstract
+        - Introduction
+        - Github link
+    - 2nd page (Jimmy)
+        - Related works
+        - Methodology
+            - Description of CTAB-GAN
+            - AE-GAN flowchart + AE-GAN training algorithm box
+            - Loss value formulas
+            - Hyperparameter tuning algorithm box
+              - If we have room, add it in
+              - Briefly mention and add details for different values in appendix
+            - ML efficacy based evaluation
+            - Statistical similarity based evaluation
+            - Add disclaimer
+    - 3rd page (Jimmy + Vignesh)
+        - Methodology
+        - Results
+            - ML efficacy table
+            - Stats. similarity table
+    - 4th page (Vignesh)
+        - Results
+        - Conclusion
+        - Contributions
+    - References
