@@ -448,7 +448,8 @@ class CTGANV2(BaseSynthesizer):
         elif self._ae_type == AutoEncoderType.DENOISING:
             self._autoencoder = AutoEncoder(
                 input_dim=train_data.shape[1],
-                hidden_dims=self._autoencoder_dim
+                hidden_dims=self._autoencoder_dim,
+                noise=True
             ).to(self._device)
         elif self._ae_type == AutoEncoderType.ENTITY:
             self._autoencoder = EntityEmbeddingEncoder(
