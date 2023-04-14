@@ -46,6 +46,20 @@ def get_news_Xy(df):
     return X, y
 
 
+def load_covtype(path="../dataset/covtype/"):
+    covtype_df = pd.read_csv(f"{path}covtype.data", header=None)
+    covtype_df.columns = [str(i) for i in np.arange(covtype_df.shape[1])]
+    discrete_columns = [str(i) for i in np.arange(10, covtype_df.shape[1])]
+    # Split out test dataset
+    # Random sample 55000 rows due to computational limitation
+    _, covtype_df = train_test_split(covtype_df, test_size=55000, random_state=1, shuffle=True, stratify=covtype_df.iloc[:,-1])
+    # Test 5k
+    train_df, test_df = train_test_split(covtype_df, test_size=5000, random_state=1, shuffle=True, stratify=covtype_df.iloc[:,-1])
+    # Valid 5k, Train 50k
+    train_df, valid_df = train_test_split(train_df, test_size=5000, random_state=1, shuffle=True, stratify=train_df.iloc[:,-1])
+    return train_df, valid_df, test_df, discrete_columns
+
+
 class BenchmarkMLP(nn.Module):
     def __init__(self, input_dim=784, output_dim=10, hidden_dim=100) -> None:
         super(BenchmarkMLP, self).__init__()
