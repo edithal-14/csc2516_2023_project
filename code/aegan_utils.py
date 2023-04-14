@@ -52,12 +52,21 @@ def load_covtype(path="../dataset/covtype/"):
     discrete_columns = [str(i) for i in np.arange(10, covtype_df.shape[1])]
     # Split out test dataset
     # Random sample 55000 rows due to computational limitation
-    _, covtype_df = train_test_split(covtype_df, test_size=55000, random_state=1, shuffle=True, stratify=covtype_df.iloc[:,-1])
+    _, covtype_df = train_test_split(covtype_df, test_size=55000, random_state=5, shuffle=True, stratify=covtype_df.iloc[:,-1])
     # Test 5k
     train_df, test_df = train_test_split(covtype_df, test_size=5000, random_state=1, shuffle=True, stratify=covtype_df.iloc[:,-1])
     # Valid 5k, Train 50k
-    train_df, valid_df = train_test_split(train_df, test_size=5000, random_state=1, shuffle=True, stratify=train_df.iloc[:,-1])
+    train_df, valid_df = train_test_split(train_df, test_size=5000, random_state=3, shuffle=True, stratify=train_df.iloc[:,-1])
     return train_df, valid_df, test_df, discrete_columns
+
+
+def get_covtype_Xy(df):
+    data = df.to_numpy()
+    num_classes = 7
+    # classes are from 1 to 7 so subtract by one
+    y = np.eye(num_classes)[data[:,-1] - 1]
+    X = data[:,:-1]
+    return X, y
 
 
 class BenchmarkMLP(nn.Module):
