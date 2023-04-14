@@ -1,0 +1,6 @@
+For each dataset and AE type:
+1) Find the best dimensions for the AE (fix remaining to default)
+2) Using (1) -> Find the best latent dimension for G (fix remaining to default)
+3) Using (1), (2) -> Find optimal no of layers in G,D (fix remaining to default)
+4) Using (1), (2), (3) -> Find optimal number of D_steps and pac value [4, 8, 16] (total 6 combinations) (fix remaining to default)
+5) Finally, tune the G_lr, (GAN_batch,epoch), AE_lr, (AE_batch, AE_epoch) using grid search (total 12 combinations)
