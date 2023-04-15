@@ -69,8 +69,9 @@ def get_covtype_Xy(df):
     return X, y
 
 class IntrusionDataset:
-    def __init__(self):
+    def __init__(self, path="../dataset/intrusion/"):
         super(IntrusionDataset, self).__init__()
+        self.path = path
         self.columns = [
             "duration",
             "protocol_type",
@@ -133,8 +134,8 @@ class IntrusionDataset:
         self.binary_columns = ["land", "logged_in", "root_shell", "is_guest_login"]
         self.target_column = ["class"]
 
-    def load_intrusion(self, path="../dataset/intrusion/"):
-        intrusion_df = pd.read_csv(f"{path}kddcup.data_10_percent", header=None)
+    def load_intrusion(self):
+        intrusion_df = pd.read_csv(f"{self.path}kddcup.data_10_percent", header=None)
         intrusion_df.columns = self.columns
         # remove columns: num_outbound_cmds, is_host_login since they contain the same value and provide no extra information
         intrusion_df = intrusion_df.drop(columns=["num_outbound_cmds", "is_host_login"])
@@ -173,6 +174,40 @@ class IntrusionDataset:
 
 
         return train_df, valid_df, test_df, discrete_columns
+    
+    def get_Xy(self, df):
+        intrusion_df = pd.read_csv(f"{self.path}kddcup.data_10_percent", header=None)
+        intrusion_df.columns = self.columns
+        # remove columns: num_outbound_cmds, is_host_login since they contain the same value and provide no extra information
+        intrusion_df = intrusion_df.drop(columns=["num_outbound_cmds", "is_host_login"])
+        for col in self.binary_columns:
+            intrusion_df[col] = intrusion_df[col].astype(np.int8)
+
+        for col in self.multi_class_columns:
+            df[col] = df[col].astype("category")
+            intrusion_df[col] = intrusion_df[col].astype("category")
+
+        # Perform one hot encoding of multi class columns
+        # Use the original dataframe not the reduced one
+        intrusion_df = pd.get_dummies(intrusion_df, columns=self.multi_class_columns)
+        df = pd.get_dummies(df, columns=self.multi_class_columns)
+        # Add missing columns then fix column order
+        missing_columns = list(set(intrusion_df.columns) - set(df.columns))
+        empty_df = pd.DataFrame(0, index=range(df.shape[0]), columns=missing_columns)
+        df = df.reset_index(drop=True)
+        df = pd.concat([df, empty_df], axis=1)
+        X = df.drop(columns=["class"]).to_numpy()
+
+        intrusion_df = pd.get_dummies(intrusion_df["class"])
+        y = pd.get_dummies(df["class"])
+        # Add missing columns then fix column order
+        missing_columns = list(set(intrusion_df.columns) - set(y.columns))
+        empty_df = pd.DataFrame(0, index=range(y.shape[0]), columns=missing_columns)
+        y = y.reset_index(drop=True)
+        y = pd.concat([y, empty_df], axis=1)
+        y = y[intrusion_df.columns].to_numpy()
+
+        return X, y
 
 
 class BenchmarkMLP(nn.Module):
