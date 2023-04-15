@@ -68,6 +68,112 @@ def get_covtype_Xy(df):
     X = data[:,:-1]
     return X, y
 
+class IntrusionDataset:
+    def __init__(self):
+        super(IntrusionDataset, self).__init__()
+        self.columns = [
+            "duration",
+            "protocol_type",
+            "service",
+            "flag",
+            "src_bytes",
+            "dst_bytes",
+            "land",
+            "wrong_fragment",
+            "urgent",
+            "hot",
+            "num_failed_logins",
+            "logged_in",
+            "num_compromised",
+            "root_shell",
+            "su_attempted",
+            "num_root",
+            "num_file_creations",
+            "num_shells",
+            "num_access_files",
+            "num_outbound_cmds",
+            "is_host_login",
+            "is_guest_login",
+            "count",
+            "srv_count",
+            "serror_rate",
+            "srv_serror_rate",
+            "rerror_rate",
+            "srv_rerror_rate",
+            "same_srv_rate",
+            "diff_srv_rate",
+            "srv_diff_host_rate",
+            "dst_host_count",
+            "dst_host_srv_count",
+            "dst_host_same_srv_rate",
+            "dst_host_diff_srv_rate",
+            "dst_host_same_src_port_rate",
+            "dst_host_srv_diff_host_rate",
+            "dst_host_serror_rate",
+            "dst_host_srv_serror_rate",
+            "dst_host_rerror_rate",
+            "dst_host_srv_rerror_rate",
+            "class"
+        ]
+        self.multi_class_columns = [
+            "wrong_fragment",
+            "urgent",
+            "hot",
+            "num_failed_logins",
+            "num_compromised",
+            "su_attempted",
+            "num_root",
+            "num_file_creations",
+            "num_shells",
+            "num_access_files",
+            "protocol_type",
+            "service",
+            "flag",
+        ]
+        self.binary_columns = ["land", "logged_in", "root_shell", "is_guest_login"]
+        self.target_column = ["class"]
+
+    def load_intrusion(self, path="../dataset/intrusion/"):
+        intrusion_df = pd.read_csv(f"{path}kddcup.data_10_percent", header=None)
+        intrusion_df.columns = self.columns
+        # remove columns: num_outbound_cmds, is_host_login since they contain the same value and provide no extra information
+        intrusion_df = intrusion_df.drop(columns=["num_outbound_cmds", "is_host_login"])
+        for col in self.binary_columns:
+            intrusion_df[col] = intrusion_df[col].astype(np.int8)
+        
+        # Separate rare classes to facilitate stratified sampling
+        class_counts = intrusion_df["class"].value_counts()
+        rare_classes = class_counts[class_counts < 100].keys().to_list()
+        intrusion_df = intrusion_df[~intrusion_df["class"].isin(rare_classes)]
+        
+        discrete_columns = self.binary_columns + self.multi_class_columns + self.target_column
+
+        # Split out test dataset
+        # Random sample 55000 rows due to computational limitation
+        _, train_df = train_test_split(intrusion_df, test_size=55000, random_state=5, shuffle=True, stratify=intrusion_df["class"])
+        # Test 5k
+        train_df, test_df = train_test_split(train_df, test_size=5000, random_state=1, shuffle=True, stratify=train_df["class"])
+        # Valid 5k, Train 50k
+        train_df, valid_df = train_test_split(train_df, test_size=5000, random_state=3, shuffle=True, stratify=train_df["class"])
+
+        # Add rare classes if at least 3 rows for that rare class is present
+        for class_name in rare_classes:
+            rare_df = intrusion_df[intrusion_df["class"] == class_name]
+            idx = rare_df.shape[0] // 3
+            if idx > 0:
+                test_df = pd.concat([test_df, rare_df.iloc[:idx]])
+                valid_df = pd.concat([valid_df, rare_df.iloc[idx:2*idx]])
+                train_df = pd.concat([train_df, rare_df.iloc[2*idx:]])
+
+        # Add missing categorical values to train_df
+        for col in discrete_columns:
+            missing_categories = list(set(intrusion_df[col].unique()) - set(train_df[col].unique()))
+            for category in missing_categories:
+                train_df = pd.concat([train_df, intrusion_df[intrusion_df[col] == category].head(1)])
+
+
+        return train_df, valid_df, test_df, discrete_columns
+
 
 class BenchmarkMLP(nn.Module):
     def __init__(self, input_dim=784, output_dim=10, hidden_dim=100) -> None:
