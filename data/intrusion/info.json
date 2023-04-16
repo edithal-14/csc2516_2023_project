@@ -4,6 +4,6 @@
         "service",
         "flag"
     ],
-    "target_encode": "False",
+    "target_encode": "True",
     "test_size": 5000
 }
