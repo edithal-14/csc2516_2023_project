@@ -10,17 +10,10 @@ from eval import supervised_model_training, get_utility_metrics, stat_sim
 
 
 def generate_metrics(data_path):
-<<<<<<< HEAD
     model_types =  ['dae', 'ee', 'vae']
-=======
-    #model_types = ['ae', 'dae', 'ee', 'vae']
-    model_types = ['ae']
->>>>>>> b2f0f370e277734d40e34a52aa3b6dffe6947ccc
     real_path = data_path + 'real.csv'
     info_path = data_path + 'info.json'
     res = pd.DataFrame(columns=["model_type", "wd", "jsd", "corr_diff", "acc", "auc", "f1"])
-
-<<<<<<< HEAD
     real = pd.read_csv(real_path)
     target_col = real.columns[-1]
 
@@ -33,19 +26,15 @@ def generate_metrics(data_path):
         le.fit(real[target_col])
         real[target_col] = le.transform(real[target_col])
 
-=======
->>>>>>> b2f0f370e277734d40e34a52aa3b6dffe6947ccc
     for model_type in model_types:
         fake_paths = glob.glob(data_path + model_type + '/*_[0-9]*.csv')
 
         # read data
-<<<<<<< HEAD
         fake = [pd.read_csv(f) for f in fake_paths]
         
         for df in fake: 
             df[target_col] = le.transform(df[target_col])
         
-=======
         real = pd.read_csv(real_path)
         fake = [pd.read_csv(f) for f in fake_paths]
         target_col = real.columns[-1]
@@ -54,7 +43,6 @@ def generate_metrics(data_path):
             info_json = file.read()
         info = json.loads(info_json)
 
->>>>>>> b2f0f370e277734d40e34a52aa3b6dffe6947ccc
         # encode categorical cols
         if info['discrete_cols']:
             enc = pd.concat([real, pd.concat(fake)])
@@ -67,30 +55,17 @@ def generate_metrics(data_path):
             enc = enc[order]
 
             real = enc.iloc[:real.shape[0]]
-<<<<<<< HEAD
-=======
-
->>>>>>> b2f0f370e277734d40e34a52aa3b6dffe6947ccc
             prev = real.shape[0]
             fake_enc = []
 
             for df in fake:
-<<<<<<< HEAD
                 fake_enc.append(enc.iloc[prev:(prev + df.shape[0])])
-=======
-                
-                fake_enc.append(enc.iloc[prev:(prev+df.shape[0])])
->>>>>>> b2f0f370e277734d40e34a52aa3b6dffe6947ccc
                 prev += df.shape[0]
 
             fake = fake_enc
 
         # statistical similarity
-<<<<<<< HEAD
         stat = [stat_sim(real_path, f, list(info['discrete_cols']), info['target_encode']) for f in fake_paths]
-=======
-        stat = [stat_sim(real_path, f, info['discrete_cols']) for f in fake_paths]
->>>>>>> b2f0f370e277734d40e34a52aa3b6dffe6947ccc
         wd, jsd, corr_diff = np.array(stat).mean(axis=0)
 
         # ml utility
@@ -107,11 +82,7 @@ if __name__ == "__main__":
     parser.add_argument("--d", "--data", help="root path contatining all data folders")
     args = parser.parse_args()
 
-<<<<<<< HEAD
     datasets = ['loan', 'intrusion', 'credit', 'covtype', 'adult']
-=======
-    datasets = ['intrusion']
->>>>>>> b2f0f370e277734d40e34a52aa3b6dffe6947ccc
 
     for data in datasets:
         print(f"processing: {data}")
