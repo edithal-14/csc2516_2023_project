@@ -186,10 +186,10 @@ class Generator(nn.Module):
 
 
 class AutoEncoderType(Enum):
-    VANILLA = 1
-    DENOISING = 2
-    ENTITY = 3
-    VARIATIONAL = 4
+    VANILLA = "vanilla"
+    DENOISING = "denoising"
+    ENTITY = "entity"
+    VARIATIONAL = "variational"
 
 
 class CTGANV2(BaseSynthesizer):
