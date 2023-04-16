@@ -46,8 +46,29 @@ def supervised_model_training(x_train, y_train, x_test, y_test, model_name):
   pred = model.predict(x_test)
 
   # In case of multi-class classification AUC and F1-scores are computed using weighted averages across all distinct labels
+<<<<<<< HEAD
+  if len(np.unique(y_test))>2:
+    predict = model.predict_proba(x_test)      
+
+    if predict.shape[1] != len(np.unique(y_test)):
+      vals = np.unique(y_test)
+      avail = {k: v for k, v in enumerate(np.unique(y_train))}
+      missing = [x for x in vals if x not in np.unique(y_train)]
+
+      idx = predict.shape[1]
+
+      for m in missing:
+        predict = np.column_stack((predict, np.zeros(predict.shape[0])))
+        avail[idx] = m
+        idx += 1
+      
+      idx_order = sorted(avail, key=lambda x: avail[x])
+      predict = predict[:, idx_order]
+
+=======
   if len(np.unique(y_train))>2:
     predict = model.predict_proba(x_test)        
+>>>>>>> b2f0f370e277734d40e34a52aa3b6dffe6947ccc
     acc = metrics.accuracy_score(y_test,pred)*100
     auc = metrics.roc_auc_score(y_test, predict,average="weighted",multi_class="ovr")
     f1_score = metrics.precision_recall_fscore_support(y_test, pred,average="weighted")[2]
@@ -105,14 +126,22 @@ def get_utility_metrics(data_real, data_fake_list, scaler="MinMax", classifiers=
     # Computing metrics across ML models trained using corresponding synthetic training datasets on real test data  
     all_fake_results_avg = []
     
+<<<<<<< HEAD
+    for i, data_fake in enumerate(data_fake_list):
+=======
     for data_fake in data_fake_list:  
+>>>>>>> b2f0f370e277734d40e34a52aa3b6dffe6947ccc
       data_fake = data_fake.to_numpy()
 
       # Spliting synthetic data to obtain corresponding synthetic training dataset
       data_fake_y = data_fake[:,-1]
       data_fake_X = data_fake[:,:data_dim-1]
+<<<<<<< HEAD
+      
+=======
       X_train_fake, _ , y_train_fake, _ = model_selection.train_test_split(data_fake_X ,data_fake_y, test_size=test_ratio, stratify=data_fake_y,random_state=42) 
 
+>>>>>>> b2f0f370e277734d40e34a52aa3b6dffe6947ccc
       # Selecting scaling method
       if scaler=="MinMax":
         scaler_fake = MinMaxScaler()
@@ -121,12 +150,20 @@ def get_utility_metrics(data_real, data_fake_list, scaler="MinMax", classifiers=
       
       # Scaling synthetic training data
       scaler_fake.fit(data_fake_X)
+<<<<<<< HEAD
+      X_train_fake_scaled = scaler_fake.transform(data_fake_X)
+=======
       X_train_fake_scaled = scaler_fake.transform(X_train_fake)
+>>>>>>> b2f0f370e277734d40e34a52aa3b6dffe6947ccc
       
       # Computing metrics across ML models trained on synthetic training data on real test data
       all_fake_results = []
       for classifier in classifiers:
+<<<<<<< HEAD
+        fake_results = supervised_model_training(X_train_fake_scaled,data_fake_y,X_test_real_scaled,y_test_real,classifier)
+=======
         fake_results = supervised_model_training(X_train_fake_scaled,y_train_fake,X_test_real_scaled,y_test_real,classifier)
+>>>>>>> b2f0f370e277734d40e34a52aa3b6dffe6947ccc
         all_fake_results.append(fake_results)
 
       # Storing the results across synthetic datasets 
@@ -136,7 +173,11 @@ def get_utility_metrics(data_real, data_fake_list, scaler="MinMax", classifiers=
     diff_results = np.array(all_real_results)- np.array(all_fake_results_avg).mean(axis=0)
     return diff_results
 
+<<<<<<< HEAD
+def stat_sim(real_path,fake_path,cat_cols=None, target_encode=False):
+=======
 def stat_sim(real_path,fake_path,cat_cols=None):
+>>>>>>> b2f0f370e277734d40e34a52aa3b6dffe6947ccc
     
   """
   Returns statistical similarity metrics
@@ -155,6 +196,12 @@ def stat_sim(real_path,fake_path,cat_cols=None):
   real = pd.read_csv(real_path)
   fake = pd.read_csv(fake_path)
 
+<<<<<<< HEAD
+  if target_encode:
+    cat_cols.append(real.columns[-1])
+
+=======
+>>>>>>> b2f0f370e277734d40e34a52aa3b6dffe6947ccc
   # Computing the real and synthetic pair-wise correlations
   real_corr = associations(real, nominal_columns=cat_cols, compute_only=True)['corr']
 

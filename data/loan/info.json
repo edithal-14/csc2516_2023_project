@@ -1,4 +1,9 @@
 {
     "discrete_cols": [],
+<<<<<<< HEAD
+    "target_encode": "False",
+    "test_size": 1000,
+=======
     "test_size": 1000
+>>>>>>> b2f0f370e277734d40e34a52aa3b6dffe6947ccc
 }
