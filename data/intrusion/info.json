@@ -1,0 +1,8 @@
+{
+    "discrete_cols": [
+        "protocol_type",
+        "service",
+        "flag"
+    ],
+    "test_size": 5000
+}

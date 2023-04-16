@@ -1,0 +1,12 @@
+{
+    "discrete_cols": [
+        "workclass",
+        "education",
+        "marital-status",
+        "occupation",
+        "relationship",
+        "race",
+        "sex",
+        "native-country"],
+    "test_size": 9000
+}
