@@ -8,9 +8,6 @@
         "race",
         "sex",
         "native-country"],
-<<<<<<< HEAD
     "target_encode": "True",
-=======
->>>>>>> b2f0f370e277734d40e34a52aa3b6dffe6947ccc
     "test_size": 9000
 }

@@ -40,8 +40,6 @@ def supervised_model_training(x_train, y_train, x_test, y_test, model_name):
     model = RandomForestClassifier(random_state=42)
   elif model_name == "mlp":
     model = MLPClassifier(random_state=42,max_iter=100)
-  
-  print(model_name)
 
   # Fitting the model and computing predictions on test data
   model.fit(x_train, y_train)
