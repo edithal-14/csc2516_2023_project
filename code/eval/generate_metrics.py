@@ -38,9 +38,9 @@ def generate_metrics(data_path):
                 df[target_col] = le.transform(df[target_col])
             
         # encode categorical cols
-        if info['discrete_cols']:
+        if info['encode_required']:
             enc = pd.concat([real_eval, pd.concat(fake)])
-            enc = pd.get_dummies(enc, columns=info['discrete_cols'])
+            enc = pd.get_dummies(enc, columns=info['encode_required'])
 
             # reorder
             order = list(enc.columns)
@@ -59,7 +59,7 @@ def generate_metrics(data_path):
             fake = fake_enc
 
         # statistical similarity
-        stat = [stat_sim(real_path, f, list(info['discrete_cols']), info['target_encode']) for f in fake_paths]
+        stat = [stat_sim(real_path, f, list(info['discrete_cols']), eval(info['target_encode'])) for f in fake_paths]
         wd, jsd, corr_diff = np.array(stat).mean(axis=0)
 
         # ml utility
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     parser.add_argument("--d", "--data", help="root path contatining all data folders")
     args = parser.parse_args()
 
-    datasets = ["credit"]
+    datasets = ["intrusion"]
 
     for data in datasets:
         print(f"processing: {data}")
