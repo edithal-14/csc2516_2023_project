@@ -27,6 +27,8 @@
     - Difference corelation
 
 - Paper outline
+    - Title
+      - ...
     - 1st page (Sumant)
         - Abstract
         - Introduction
