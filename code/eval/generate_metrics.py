@@ -14,6 +14,7 @@ def generate_metrics(data_path):
     real_path = data_path + 'real.csv'
     info_path = data_path + 'info.json'
     res = pd.DataFrame(columns=["model_type", "wd", "jsd", "corr_diff", "acc", "auc", "f1"])
+
     real = pd.read_csv(real_path)
     target_col = real.columns[-1]
 
@@ -35,14 +36,6 @@ def generate_metrics(data_path):
         for df in fake: 
             df[target_col] = le.transform(df[target_col])
         
-        real = pd.read_csv(real_path)
-        fake = [pd.read_csv(f) for f in fake_paths]
-        target_col = real.columns[-1]
-
-        with open(info_path, 'r') as file:
-            info_json = file.read()
-        info = json.loads(info_json)
-
         # encode categorical cols
         if info['discrete_cols']:
             enc = pd.concat([real, pd.concat(fake)])
@@ -82,7 +75,7 @@ if __name__ == "__main__":
     parser.add_argument("--d", "--data", help="root path contatining all data folders")
     args = parser.parse_args()
 
-    datasets = ['loan', 'intrusion', 'credit', 'covtype', 'adult']
+    datasets = ['adult', "loan", "intrusion", 'covtype', "credit"]
 
     for data in datasets:
         print(f"processing: {data}")

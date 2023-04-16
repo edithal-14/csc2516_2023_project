@@ -41,6 +41,8 @@ def supervised_model_training(x_train, y_train, x_test, y_test, model_name):
   elif model_name == "mlp":
     model = MLPClassifier(random_state=42,max_iter=100)
   
+  print(model_name)
+
   # Fitting the model and computing predictions on test data
   model.fit(x_train, y_train)
   pred = model.predict(x_test)
@@ -63,7 +65,7 @@ def supervised_model_training(x_train, y_train, x_test, y_test, model_name):
       
       idx_order = sorted(avail, key=lambda x: avail[x])
       predict = predict[:, idx_order]
-  
+
     acc = metrics.accuracy_score(y_test,pred)*100
     auc = metrics.roc_auc_score(y_test, predict,average="weighted",multi_class="ovr")
     f1_score = metrics.precision_recall_fscore_support(y_test, pred,average="weighted")[2]
@@ -128,8 +130,6 @@ def get_utility_metrics(data_real, data_fake_list, scaler="MinMax", classifiers=
       data_fake_y = data_fake[:,-1]
       data_fake_X = data_fake[:,:data_dim-1]
       
-      X_train_fake, _ , y_train_fake, _ = model_selection.train_test_split(data_fake_X ,data_fake_y, test_size=test_ratio, stratify=data_fake_y,random_state=42) 
-
       # Selecting scaling method
       if scaler=="MinMax":
         scaler_fake = MinMaxScaler()
@@ -153,8 +153,8 @@ def get_utility_metrics(data_real, data_fake_list, scaler="MinMax", classifiers=
     diff_results = np.array(all_real_results)- np.array(all_fake_results_avg).mean(axis=0)
     return diff_results
 
-
-def stat_sim(real_path,fake_path,cat_cols=None, target_encode=False):    
+def stat_sim(real_path,fake_path,cat_cols=None, target_encode=False):
+    
   """
   Returns statistical similarity metrics
   Inputs:
