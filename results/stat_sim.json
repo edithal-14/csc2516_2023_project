@@ -26,5 +26,11 @@
         "denoising": [],
         "vae": [],
         "ee": []
+    },
+    "loan": {
+        "vanilla": [],
+        "denoising": [],
+        "vae": [],
+        "ee": []
     }
 }

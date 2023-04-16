@@ -1,14 +1,14 @@
 {
-    "adult" : {
-        "vanilla" : [],
-        "denoising" : [],
-        "vae" : [],
-        "ee" : []
+    "adult": {
+        "vanilla": [],
+        "denoising": [],
+        "vae": [],
+        "ee": []
     },
-    "credit" : {
-        "vanilla" : [],
-        "denoising" : [],
-        "vae" : [],
-        "ee" : []
+    "credit": {
+        "vanilla": [],
+        "denoising": [],
+        "vae": [],
+        "ee": []
     }
 }

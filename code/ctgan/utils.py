@@ -71,22 +71,36 @@ def save_real_df(dset):
 
             out = get_cols(dset)
             real_df = load_df(dpath,out['cols'][1])
+            real_df["income_50k"] = real_df["income_50k"].str.rstrip('.')
+            real_df.loc[real_df["income_50k"] == " <=50K"] = 0
+            real_df.loc[real_df["income_50k"] == " >50K"] = 1
             real_df.to_csv(f"{BASE_DIR}/dataset/adult/real_{t}.csv", index=False)
             print(f"Real {t} dataframe for adult dataset saved: {BASE_DIR}/dataset/adult/real_{t}.csv")
-    elif dset == 'credit':
-        dt_path = f"{BASE_DIR}/dts/credit.dt"
+    elif dset in ['credit', 'loan']:
+        dt_path = f"{BASE_DIR}/dts/{dset}.dt"
         # load dt
         with open(dt_path,'rb') as f:
             dt = pickle.load(f)
         print("Data transformer loaded")
 
+        # load td_train and td_val
+        td_train_path = f"{BASE_DIR}/dataset/{dset}/{dset}_train.td"
+        td_val_path = f"{BASE_DIR}/dataset/{dset}/{dset}_val.td"
+        with open(td_train_path,'rb') as f:
+            td_train = pickle.load(f)
+        with open(td_val_path,'rb') as f:
+            td_val = pickle.load(f)
+        real_df = pd.concat([dt.inverse_transform(td_train),dt.inverse_transform(td_val)],axis=0)
+        real_df.to_csv(f"{BASE_DIR}/dataset/{dset}/real_data.csv", index=False)
+        print(f"Real train dataframe for {dset} dataset saved: {BASE_DIR}/dataset/{dset}/real_data.csv")
+
         # load td_test
-        td_path = f"{BASE_DIR}/dataset/credit/credit_test.td"
+        td_path = f"{BASE_DIR}/dataset/{dset}/{dset}_test.td"
         with open(td_path,'rb') as f:
             td_test = pickle.load(f)
         real_df = dt.inverse_transform(td_test)
-        real_df.to_csv(f"{BASE_DIR}/dataset/credit/real_test.csv", index=False)
-        print(f"Real test dataframe for credit dataset saved: {BASE_DIR}/dataset/credit/real_test.csv")
+        real_df.to_csv(f"{BASE_DIR}/dataset/{dset}/real_test.csv", index=False)
+        print(f"Real test dataframe for {dset} dataset saved: {BASE_DIR}/dataset/{dset}/real_test.csv")
 
 def save_fake_df(dset):
     for t in ['data', 'test']:
@@ -103,6 +117,46 @@ def save_fake_df(dset):
             fake_data = ae_gan.sample(real_df.shape[0])
             fake_data.to_csv(f"{BASE_DIR}/dataset/{dset}/fake_{t}_{ae_type}.csv", index=False) 
             print(f"Fake dataframe for {dset} ({ae_type}) dataset saved: {BASE_DIR}/dataset/{dset}/fake_{t}_{ae_type}.csv")
+
+def ohe_cat(dset):
+    if dset == "adult":
+        cat_columns = get_cols("adult")['discrete_cols'][1]
+        cat_columns.remove('income_50k')
+        real_df = pd.read_csv(f"{BASE_DIR}/dataset/adult/real_test.csv")
+        real_df = pd.get_dummies(real_df, columns=cat_columns)
+        real_df.to_csv(f"{BASE_DIR}/dataset/adult/real_test.csv", index=False)
+        for ae_type in AE_TYPES:
+            fake_df = pd.read_csv(f"{BASE_DIR}/dataset/adult/fake_test_{ae_type}.csv")
+            fake_df.loc[fake_df["income_50k"] == " <=50K"] = 0
+            fake_df.loc[fake_df["income_50k"] == " >50K"] = 1
+            fake_df = pd.get_dummies(fake_df, columns=cat_columns)
+            col_union = np.union1d(fake_df.columns, real_df.columns)
+            # Add missing columns
+            for col_name in col_union:
+                if col_name not in fake_df.columns:
+                    fake_df[col_name] = 0
+                if col_name not in real_df.columns:
+                    real_df[col_name] = 0
+            # Sort columns to ensure same ordering in fake and real data frames
+            fake_df = fake_df.reindex(real_df.columns, axis=1)
+            fake_df.to_csv(f"{BASE_DIR}/dataset/adult/fake_test_{ae_type}.csv", index=False)
+    elif dset == "loan":
+        real_df = pd.read_csv(f"{BASE_DIR}/dataset/loan/real_test.csv")
+        real_df = pd.get_dummies(real_df, columns=['Family','Education'])
+        real_df.to_csv(f"{BASE_DIR}/dataset/loan/real_test.csv", index=False)
+        for ae_type in AE_TYPES:
+            fake_df = pd.read_csv(f"{BASE_DIR}/dataset/loan/fake_test_{ae_type}.csv")
+            fake_df = pd.get_dummies(fake_df, columns=['Family','Education'])
+            col_union = np.union1d(fake_df.columns, real_df.columns)
+            # Add missing columns
+            for col_name in col_union:
+                if col_name not in fake_df.columns:
+                    fake_df[col_name] = 0
+                if col_name not in real_df.columns:
+                    real_df[col_name] = 0
+            # Sort columns to ensure same ordering in fake and real data frames
+            fake_df = fake_df.reindex(real_df.columns, axis=1)
+            fake_df.to_csv(f"{BASE_DIR}/dataset/loan/fake_test_{ae_type}.csv", index=False)
 
 def transform_adult():
     dt = DataTransformer()

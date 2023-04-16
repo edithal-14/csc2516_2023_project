@@ -91,6 +91,7 @@ def get_utility_metrics(real_path, fake_paths, scaler="MinMax", classifiers=["lr
     data_real_y = data_real[:,-1]
     data_real_X = data_real[:,:data_dim-1]
     X_train_real, X_test_real, y_train_real, y_test_real = model_selection.train_test_split(data_real_X ,data_real_y, test_size=test_ratio, stratify=data_real_y,random_state=42) 
+    print(np.unique(y_train_real-y_test_real))
 
     # Selecting scaling method
     if scaler=="MinMax":
@@ -142,6 +143,8 @@ def get_utility_metrics(real_path, fake_paths, scaler="MinMax", classifiers=["lr
       all_fake_results_avg.append(all_fake_results)
     
     # Returning the final avg difference between metrics of ML models trained using real vs synthetic datasets. 
+    print(f"\tReal results: {all_real_results}")
+    print(f"\tFake results: {all_fake_results_avg}")
     diff_results = np.array(all_real_results)- np.array(all_fake_results_avg).mean(axis=0)
     return diff_results
 
