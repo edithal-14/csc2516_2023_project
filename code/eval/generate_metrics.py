@@ -22,7 +22,6 @@ def generate_metrics(data_path):
     info = json.loads(info_json)
 
     if info['target_encode'] == "True":
-        print('here')
         le = LabelEncoder()
         le.fit(real[target_col])
         real[target_col] = le.transform(real[target_col])
@@ -77,7 +76,7 @@ if __name__ == "__main__":
     parser.add_argument("--d", "--data", help="root path contatining all data folders")
     args = parser.parse_args()
 
-    datasets = ["loan"]
+    datasets = ["credit"]
 
     for data in datasets:
         print(f"processing: {data}")
