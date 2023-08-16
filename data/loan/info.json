@@ -1,6 +1,0 @@
-{
-    "discrete_cols": ["Family", "Education", "Securities Account", "CD Account", "Online", "CreditCard"],
-    "encode_required": ["Family", "Education"],
-    "target_encode": "False",
-    "test_size": 1000
-}
