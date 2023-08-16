@@ -4,7 +4,7 @@ from torch import nn
 class AutoEncoder(nn.Module):
     """AutoEncoder for AE-CTGAN Framework"""
 
-    def __init__(self, input_dim: int, hidden_dims: list, noise: str=None) -> None:
+    def __init__(self, input_dim: int, hidden_dims: list, noise: bool=False) -> None:
         super(AutoEncoder, self).__init__()
         enc = []
         dec = []
@@ -30,7 +30,7 @@ class AutoEncoder(nn.Module):
         self.noise = noise
 
     def encode(self, x: torch.tensor) -> torch.tensor:
-        if self.noise is not None:
+        if self.noise:
             noise = torch.randn(x.shape).to(x.device)
             x += noise
         return self.encoder(x)
