@@ -2,3 +2,4 @@
 
 - CTGAN code is sourced from the git repo. `sdv-dev/ctgan` and placed under `code/ctgan`
 - Proposal is under `proposal\CSC2516_Project_Proposal.pdf`
+- [Project report link](CSC2516_Project_Report.pdf)
