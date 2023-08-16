@@ -5,7 +5,8 @@ import torch
 from packaging import version
 from torch import nn
 from torch.utils.data import DataLoader
-from tqdm.notebook import tqdm
+from enum import Enum
+from tqdm import tqdm
 
 from ctgan.data_sampler import DataSampler
 from ctgan.data_transformer import DataTransformer
@@ -184,6 +185,13 @@ class Generator(nn.Module):
         return data
 
 
+class AutoEncoderType(Enum):
+    VANILLA = "vanilla"
+    DENOISING = "denoising"
+    ENTITY = "entity"
+    VARIATIONAL = "variational"
+
+
 class CTGANV2(BaseSynthesizer):
     """Conditional Table GAN Synthesizer.
     This is the core class of the CTGAN project, where the different components
@@ -227,13 +235,17 @@ class CTGANV2(BaseSynthesizer):
             Whether to attempt to use cuda for GPU computation.
             If this is False or CUDA is not available, CPU will be used.
             Defaults to ``True``.
+        ae_type (AutoEncoderType):
+            Which auto encoder to use.
     """
 
-    def __init__(self, ae_type='vanilla', embedding_dim=128, generator_dim=(256, 256), discriminator_dim=(256, 256),
-                 ae_dim=(256, 128, 64), clf_dim=(256, 256, 256, 256), generator_lr=2e-4, generator_decay=1e-6, 
-                 discriminator_lr=2e-4, discriminator_decay=1e-6, autoencoder_lr=1e-4, clf_lr=2e-4, 
-                 clf_betas=(0.5, 0.9), clf_eps=1e-3, clf_decay=1e-5, batch_size=512, ae_batch_size=512,
-                 discriminator_steps=1, log_frequency=True, verbose=False, epochs=100, ae_epochs=100,pac=8, cuda=True):
+    def __init__(self, embedding_dim=128, generator_dim=(256, 256), discriminator_dim=(256, 256), 
+        ae_dim=(256, 128, 64), clf_dim=(256, 256, 256, 256), generator_lr=2e-4, generator_decay=1e-6,
+        discriminator_lr=2e-4, discriminator_decay=1e-6, autoencoder_lr=1e-4, clf_lr=2e-4,
+        clf_betas=(0.5, 0.9), clf_eps=1e-3, clf_decay=1e-5, batch_size=512, ae_batch_size=512,
+        discriminator_steps=1, log_frequency=True, verbose=False, epochs=300, ae_epochs=100, pac=8, cuda=True,
+        ae_type: AutoEncoderType = AutoEncoderType.VANILLA,
+    ):
 
         assert batch_size % 2 == 0
 
@@ -243,6 +255,7 @@ class CTGANV2(BaseSynthesizer):
         self._discriminator_dim = discriminator_dim
         self._autoencoder_dim = ae_dim
         self._clf_dim = clf_dim
+        self._ae_type = ae_type
 
         self._generator_lr = generator_lr
         self._generator_decay = generator_decay
@@ -372,8 +385,28 @@ class CTGANV2(BaseSynthesizer):
         if invalid_columns:
             raise ValueError(f'Invalid columns found: {invalid_columns}')
 
+
+    def transform(self, train_data, discrete_columns, dt=None, is_pre_transformed=False):
+        """
+        Fit the data transformer and perform the transformation,
+        Supports reusing a transformer and pre-transformed dataset
+        """
+        # transform data - MSN + OH
+        if dt is not None:
+            self._transformer = dt
+        else:
+            self._validate_discrete_columns(train_data, discrete_columns)
+            self._transformer = DataTransformer()
+            self._transformer.fit(train_data, discrete_columns)
+        if is_pre_transformed:
+            return train_data
+        else:
+            self._validate_discrete_columns(train_data, discrete_columns)
+            return self._transformer.transform(train_data)
+
+
     @random_state
-    def fit(self, train_data, discrete_columns=(), epochs=None, ae_epochs=None, target_index=None, dt=None, is_transformed=False):
+    def fit(self, train_data, discrete_columns=(), epochs=None, ae_epochs=None, target_index=None, dt=None, is_pre_transformed=False):
         """Fit the CTGAN Synthesizer models to the training data.
         Args:
             train_data (numpy.ndarray or pandas.DataFrame):
@@ -383,9 +416,9 @@ class CTGANV2(BaseSynthesizer):
                 Vector. If ``train_data`` is a Numpy array, this list should
                 contain the integer indices of the columns. Otherwise, if it is
                 a ``pandas.DataFrame``, this list should contain the column names.
+            is_transformed (bool):
+                Is the training data already transformed
         """
-        self._validate_discrete_columns(train_data, discrete_columns)
-
         # epochs for GAN
         if epochs is None:
             epochs = self._epochs
@@ -400,55 +433,59 @@ class CTGANV2(BaseSynthesizer):
         if ae_epochs is None:
             ae_epochs = self._ae_epochs
 
-        # transform data - MSN + OH
-        if dt is not None:
-            self._transformer = dt
-        else:
-            self._transformer = DataTransformer()
-            self._transformer.fit(train_data, discrete_columns)
-        if not is_transformed:
-            train_data = self._transformer.transform(train_data)
+        train_data = self.transform(train_data, discrete_columns, dt=dt, is_pre_transformed=is_pre_transformed)
 
         self._data_sampler = DataSampler(
             train_data,
             self._transformer.output_info_list,
-            self._log_frequency)
+            self._log_frequency
+        )
         
-        if self.ae_type == 'vanilla':
+        if self._ae_type == AutoEncoderType.VANILLA:
             self._autoencoder = AutoEncoder(
                 input_dim=train_data.shape[1],
                 hidden_dims=self._autoencoder_dim
             ).to(self._device)
-        elif self.ae_type == 'denoising':
+        elif self._ae_type == AutoEncoderType.DENOISING:
             self._autoencoder = AutoEncoder(
                 input_dim=train_data.shape[1],
                 hidden_dims=self._autoencoder_dim,
                 noise=True
             ).to(self._device)
-        elif self.ae_type == 'vae':
-            self._autoencoder = VariationalAutoEncoder(
-                input_dim=train_data.shape[1],
-                hidden_dims=self._autoencoder_dim
-            ).to(self._device)
-        elif self.ae_type == 'ee':
+        elif self._ae_type == AutoEncoderType.ENTITY:
             self._autoencoder = EntityEmbeddingEncoder(
                 input_dim=train_data.shape[1],
                 hidden_dims=self._autoencoder_dim,
                 output_info=self._transformer.output_info_list
             ).to(self._device)
+        elif self._ae_type == AutoEncoderType.VARIATIONAL:
+            self._autoencoder = VariationalAutoEncoder(
+                input_dim=train_data.shape[1],
+                hidden_dims=self._autoencoder_dim
+            ).to(self._device)
+        else:
+            raise Exception("Invalid auto encoder type")
 
         # ae training setup
         optimizerAE = torch.optim.Adam(self._autoencoder.parameters(), lr=self._autoencoder_lr)
         ae_loss_fn = nn.MSELoss()
         self._ae_losses = np.zeros(ae_epochs)
-        dataloader = DataLoader(train_data, batch_size=self._ae_batch_size)
+        # dataloader = DataLoader(train_data, batch_size=self._ae_batch_size)
+        train_data = torch.from_numpy(train_data.astype("float32")).to(self._device)
+        num_batches = train_data.shape[0] // self._batch_size
 
-        for it in tqdm(range(ae_epochs), desc="AE Train", leave=False):
+        print("Training AE")
+
+        for it in tqdm(range(ae_epochs)):
             it_loss = 0
             
-            for batch in dataloader:
+            # for batch in dataloader:
+            idx = 0
+            for _ in range(num_batches):
+                batch = train_data[idx : idx + self._batch_size]
+                idx += self._batch_size
                 # forward pass
-                batch = batch.to(self._device, dtype=torch.float32)
+                # batch = batch.to(self._device, dtype=torch.float32)
                 out = self._autoencoder(batch)                
                 loss = ae_loss_fn(out, batch)
                 
@@ -505,13 +542,17 @@ class CTGANV2(BaseSynthesizer):
 
         self._d_losses = np.zeros(epochs)
         self._g_losses = np.zeros(epochs)
-        self._c_losses = np.zeros(epochs)
+        if target_index is not None:
+            self._c_losses = np.zeros(epochs)
 
         mean = torch.zeros(self._batch_size, self._embedding_dim, device=self._device)
         std = mean + 1
 
         steps_per_epoch = max(len(train_data) // self._batch_size, 1)
-        for i in tqdm(range(epochs), desc="GAN Train", leave=False):
+
+        print("Training AE-GAN")
+
+        for i in tqdm(range(epochs)):
             for id_ in range(steps_per_epoch):
                 real = None
 
@@ -642,7 +683,8 @@ class CTGANV2(BaseSynthesizer):
 
             self._d_losses[i] = loss_d.item()
             self._g_losses[i] = loss_g.item()
-            self._c_losses[i] = loss_cr.item() + loss_cf.item()
+            if target_index is not None:
+                self._c_losses[i] = loss_cr.item() + loss_cf.item()
 
             if self._verbose:
                 msg = f'Epoch {i+1}, Loss G: {loss_g.detach().cpu(): .4f}, Loss D: {loss_d.detach().cpu(): .4f}'
